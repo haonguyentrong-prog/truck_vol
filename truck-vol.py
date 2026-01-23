@@ -7,7 +7,7 @@ from datetime import datetime
 # 1. CẤU HÌNH TRANG
 st.set_page_config(page_title="Truck & Vol Analysis Pro", layout="wide", page_icon="🚚")
 
-st.title("🚚 Phân tích Truck & Volume - Hệ thống Cảnh báo Đa cấp")
+st.title("🚚 Phân tích Truck & Volume")
 st.markdown("---")
 
 # ======================
@@ -96,7 +96,7 @@ if uploaded_file:
                 elif -15 <= pct < -5:
                     remark = "📉 Giảm mạnh"
                 elif -5 <= pct < 0:
-                    remark = "📉 Giảm nhẹ"
+                    remark = "✅ Bình thường"
                 # Logic Tăng
                 elif 0 <= pct < 5:
                     remark = "✅ Bình thường"
@@ -206,3 +206,4 @@ if uploaded_file:
         st.error(f"Lỗi hệ thống: {e}")
 else:
     st.info("👋 Hãy nạp file Excel vào thanh công cụ bên trái để bắt đầu.")
+
