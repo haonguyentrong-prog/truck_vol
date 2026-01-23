@@ -7,14 +7,14 @@ from datetime import datetime
 # 1. CẤU HÌNH TRANG
 st.set_page_config(page_title="Truck & Vol Analysis Pro", layout="wide", page_icon="🚚")
 
-st.title("🚚 Phân tích Truck & Volume")
+st.title("🚚 Phân tích Truck & Volume - Hệ thống Cảnh báo Đa cấp")
 st.markdown("---")
 
 # ======================
 # 2. INPUT & XỬ LÝ DỮ LIỆU
 # ======================
-st.sidebar.header("📥 Upload Data")
-uploaded_file = st.sidebar.file_uploader("Tải lên file dữ liệu (.xlsx)", type=["xlsx"])
+st.sidebar.header("📥 Control Panel")
+uploaded_file = st.sidebar.file_uploader("Nạp dữ liệu hệ thống (.xlsx)", type=["xlsx"])
 
 if uploaded_file:
     try:
@@ -38,7 +38,7 @@ if uploaded_file:
         df["slot"] = df["hour"].apply(lambda h: f"{h:02d}:00-{(h+1):02d}:00")
 
         # ----------------------
-        # BỘ LỌC THỨ (THEO YÊU CẦU)
+        # BỘ LỌC THỨ
         # ----------------------
         st.sidebar.subheader("📅 Bộ lọc theo nhóm thứ")
         filter_type = st.sidebar.selectbox(
@@ -58,9 +58,9 @@ if uploaded_file:
             df_filtered = df
 
         # ----------------------
-        # CHỌN GIAI ĐOẠN (GIỮ NGUYÊN)
+        # CHỌN GIAI ĐOẠN
         # ----------------------
-        st.subheader(f"📊 Đang lọc: {filter_type}")
+        st.subheader(f"📊 Đang phân tích: {filter_type}")
         c1, c2 = st.columns(2)
         with c1:
             range_1 = st.date_input("Giai đoạn 1 (Gốc)", [df["date"].min(), df["date"].median()], key="r1")
@@ -83,14 +83,30 @@ if uploaded_file:
             combined = res1.merge(res2, on=["slot", "hour"], how="outer", suffixes=('_g1', '_g2')).fillna(0)
             combined = combined.sort_values("hour")
 
-            # Logic Remark
+            # ======================
+            # 3. LOGIC REMARK (CẬP NHẬT TĂNG/GIẢM ĐA CẤP)
+            # ======================
             def process_logic(v1, v2):
                 diff_val = int(v2 - v1)
                 pct = round((diff_val / v1 * 100), 0) if v1 != 0 else 0
-                if pct < 5: remark = "✅ Bình thường"
-                elif 5 <= pct < 10: remark = "🔼 Tăng nhẹ"
-                elif 10 <= pct < 15: remark = "🚀 Tăng mạnh"
-                else: remark = "🚨 CẢNH BÁO"
+                
+                # Logic Giảm
+                if pct < -15:
+                    remark = "🚨 Giảm sâu"
+                elif -15 <= pct < -5:
+                    remark = "📉 Giảm mạnh"
+                elif -5 <= pct < 0:
+                    remark = "📉 Giảm nhẹ"
+                # Logic Tăng
+                elif 0 <= pct < 5:
+                    remark = "✅ Bình thường"
+                elif 5 <= pct < 10:
+                    remark = "🔼 Tăng nhẹ"
+                elif 10 <= pct < 15:
+                    remark = "🚀 Tăng mạnh"
+                else: # >= 15%
+                    remark = "🚨 CẢNH BÁO"
+                
                 return f"{diff_val} | {int(pct)}%", remark
 
             truck_eval = combined.apply(lambda r: process_logic(r['truck_max_g1'], r['truck_max_g2']), axis=1)
@@ -109,24 +125,29 @@ if uploaded_file:
                 "Vol Remark": [x[1] for x in vol_eval]
             })
 
-            # Hiển thị bảng màu
+            # Hiển thị bảng màu (Cập nhật màu cho nhóm Giảm)
             def style_remark(val):
+                # Nhóm Tăng & Cảnh báo
                 if val == "🚨 CẢNH BÁO": return 'background-color: #ff4b4b; color: white'
                 if val == "🚀 Tăng mạnh": return 'background-color: #ffa500; color: white'
                 if val == "🔼 Tăng nhẹ": return 'background-color: #1e90ff; color: white'
+                # Nhóm Giảm
+                if val == "🚨 Giảm sâu": return 'background-color: #8b0000; color: white' # Đỏ đậm
+                if val == "📉 Giảm mạnh": return 'background-color: #2e8b57; color: white' # Xanh lá đậm
+                if val == "📉 Giảm nhẹ": return 'background-color: #90ee90; color: black' # Xanh lá nhạt
                 return ''
 
             st.dataframe(display_df.style.applymap(style_remark, subset=['Truck Remark', 'Vol Remark']), use_container_width=True, hide_index=True)
 
             # ======================
-            # 4. BIỂU ĐỒ COMBO HIỂN THỊ GIÁ TRỊ (VALUES)
+            # 4. BIỂU ĐỒ COMBO (FIX LỖI TITLE_FONT)
             # ======================
             st.divider()
-            st.subheader(f"📈 Biểu đồ Combo - {filter_type}")
+            st.subheader(f"📈 Biểu đồ Combo - {filter_type} (Giai đoạn 2)")
 
             fig = go.Figure()
 
-            # TRUCK (BAR) - Hiển thị giá trị trên đầu cột
+            # TRUCK (BAR)
             fig.add_trace(go.Bar(
                 x=combined["slot"],
                 y=combined["truck_max_g2"],
@@ -134,11 +155,11 @@ if uploaded_file:
                 marker_color='#1f77b4',
                 opacity=0.7,
                 yaxis='y1',
-                text=combined["truck_max_g2"].astype(int), # Thêm text giá trị
+                text=combined["truck_max_g2"].astype(int),
                 textposition='auto',
             ))
 
-            # VOLUME (LINE) - Hiển thị giá trị trên điểm
+            # VOLUME (LINE)
             fig.add_trace(go.Scatter(
                 x=combined["slot"],
                 y=combined["volume_max_g2"],
@@ -146,27 +167,27 @@ if uploaded_file:
                 mode='lines+markers+text',
                 line=dict(color='#ff7f0e', width=3),
                 marker=dict(size=8),
-                text=combined["volume_max_g2"].astype(int), # Thêm text giá trị
+                text=combined["volume_max_g2"].astype(int),
                 textposition="top center",
                 yaxis='y2'
             ))
 
             fig.update_layout(
-                title=f'So sánh Truck và Volume giai đoạn 2 ({filter_type})',
+                title=f'Tương quan Truck và Volume ({filter_type})',
                 xaxis=dict(title='Khung giờ'),
                 yaxis=dict(
                     title='Số lượng Xe (Truck)',
-                    title_font=dict(color='#1f77b4'),
+                    title_font=dict(color='#1f77b4'), # Đã sửa thành title_font
                     tickfont=dict(color='#1f77b4'),
-                    range=[0, combined["truck_max_g2"].max() * 1.2] # Tạo khoảng trống phía trên để hiện text
+                    range=[0, combined["truck_max_g2"].max() * 1.3]
                 ),
                 yaxis2=dict(
                     title='Tải trọng (Volume)',
-                    title_font=dict(color='#ff7f0e'),
+                    title_font=dict(color='#ff7f0e'), # Đã sửa thành title_font
                     tickfont=dict(color='#ff7f0e'),
                     overlaying='y',
                     side='right',
-                    range=[0, combined["volume_max_g2"].max() * 1.2]
+                    range=[0, combined["volume_max_g2"].max() * 1.3]
                 ),
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 height=600,
@@ -179,10 +200,9 @@ if uploaded_file:
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
                 display_df.to_excel(writer, index=False)
-            st.download_button("📥 Tải báo cáo (.xlsx)", buffer.getvalue(), "Bao_cao_Truck_Vol.xlsx")
+            st.download_button("📥 Tải báo cáo (.xlsx)", buffer.getvalue(), f"Bao_cao_{filter_type}.xlsx")
 
     except Exception as e:
-        st.error(f"Lỗi: {e}")
+        st.error(f"Lỗi hệ thống: {e}")
 else:
-
-    st.info("👋 Hãy tải file Excel vào sidebar để bắt đầu.")
+    st.info("👋 Hãy nạp file Excel vào thanh công cụ bên trái để bắt đầu.")
