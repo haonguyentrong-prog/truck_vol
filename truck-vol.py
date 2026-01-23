@@ -7,13 +7,13 @@ from datetime import datetime
 # 1. CẤU HÌNH TRANG
 st.set_page_config(page_title="Truck & Vol Analysis Pro", layout="wide", page_icon="🚚")
 
-st.title("🚚 Phân tích Truck & Volume - Hiển thị giá trị")
+st.title("🚚 Phân tích Truck & Volume")
 st.markdown("---")
 
 # ======================
 # 2. INPUT & XỬ LÝ DỮ LIỆU
 # ======================
-st.sidebar.header("📥 Cấu hình đầu vào")
+st.sidebar.header("📥 Upload Data")
 uploaded_file = st.sidebar.file_uploader("Tải lên file dữ liệu (.xlsx)", type=["xlsx"])
 
 if uploaded_file:
@@ -122,7 +122,7 @@ if uploaded_file:
             # 4. BIỂU ĐỒ COMBO HIỂN THỊ GIÁ TRỊ (VALUES)
             # ======================
             st.divider()
-            st.subheader(f"📈 Biểu đồ Combo - {filter_type} (Hiển thị giá trị)")
+            st.subheader(f"📈 Biểu đồ Combo - {filter_type}")
 
             fig = go.Figure()
 
@@ -130,7 +130,7 @@ if uploaded_file:
             fig.add_trace(go.Bar(
                 x=combined["slot"],
                 y=combined["truck_max_g2"],
-                name='Số lượng Xe (Truck)',
+                name='Truck',
                 marker_color='#1f77b4',
                 opacity=0.7,
                 yaxis='y1',
@@ -142,7 +142,7 @@ if uploaded_file:
             fig.add_trace(go.Scatter(
                 x=combined["slot"],
                 y=combined["volume_max_g2"],
-                name='Tải trọng (Volume)',
+                name='Volume',
                 mode='lines+markers+text',
                 line=dict(color='#ff7f0e', width=3),
                 marker=dict(size=8),
@@ -184,4 +184,5 @@ if uploaded_file:
     except Exception as e:
         st.error(f"Lỗi: {e}")
 else:
+
     st.info("👋 Hãy tải file Excel vào sidebar để bắt đầu.")
